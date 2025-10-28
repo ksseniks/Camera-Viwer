@@ -1,0 +1,12 @@
+
+            train:
+            - D:/CameraViwer/data/train/images/positive
+            - D:/CameraViwer/data/train/images/negative
+
+            val:
+            - D:/CameraViwer/data/train/images/positive
+            - D:/CameraViwer/data/train/images/negative
+
+            nc: 2
+            names: ['negative', 'person']
+        
