@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Добавить камеру</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #1e1e1e;
+        color: #fff;
+    }
+    .container {
+        width: 700px;
+        margin: auto;
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    h2 {
+        margin-top: 30px;
+        color: #8ecfff;
+    }
+    label { display: block; margin-top: 15px; }
+    input, textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 5px;
+    }
+    button {
+        margin-top: 25px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background: #4CAF50;
+        color: #fff;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    small {
+        color: #bbb;
+        font-size: 12px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Добавить новую камеру</h1>
+
+    <form method="POST" action="/camera/add">
+
+        <h2>Основные параметры</h2>
+
+        <label>Название камеры</label>
+        <input name="name" placeholder="Коридор 1">
+
+        <label>
+            Поток для просмотра
+            <small>(stream_view)</small>
+        </label>
+        <input name="stream_view" placeholder="rtsp://...">
+
+        <label>
+            Поток для записи
+            <small>(stream_record)</small>
+        </label>
+        <input name="stream_record" placeholder="rtsp://...">
+
+        <h2>Запись и события</h2>
+
+        <label>Длительность записи (минуты)</label>
+        <input type="number" name="record_duration_minutes" value="30">
+
+        <label>Длительность события (секунды)</label>
+        <input type="number" name="event_duration_seconds" value="5">
+
+        <h2>Детекция объектов</h2>
+
+        <label>Список объектов поиска</label>
+        <textarea name="searchObjectList"></textarea>
+
+        <label>Порог обнаружения</label>
+        <input type="number" step="0.01" name="threshold" value="0.25">
+
+        <label>Мин. вес объекта</label>
+        <input type="number" step="0.01" name="minWeight" value="0.5">
+
+        <button type="submit">Добавить камеру</button>
+    </form>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,112 @@
+html, body {
+    margin: 0; padding: 0;
+    height: 100%; width: 100%;
+    background: #000;
+    overflow: hidden;
+}
+
+.grid-container {
+    display: grid;
+    height: 100vh;
+    width: 100vw;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+
+    grid-template-rows: repeat(var(--rows), 1fr);
+    grid-template-columns: repeat(var(--cols), 1fr);
+}
+
+.camera {
+    width: 99.8%;
+    height: 99.9%;
+    overflow: hidden;
+    position: relative;
+    border: 0.1vw solid rgb(65, 65, 65);
+}
+
+.camera h2 {
+    position: absolute;
+    top: 0;
+    left: 4px;
+    margin: 0;
+    z-index: 10;
+    background: rgba(0,0,0,0.5);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 0 0 4px 0;
+    font-size: 24px;
+    user-select: none;
+    transition: top 0.3s ease;
+}
+
+.camera img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    background: #000;
+    user-select: none;
+    pointer-events: none;
+}
+
+.camera.no-camera {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: rgb(88, 88, 88);
+    font-size: 24px;
+}
+
+/* Fullscreen */
+.fullscreen .grid-container {
+    display: block;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+}
+.fullscreen .camera {
+    width: 100vw !important;
+    height: 100vh !important;
+    cursor: pointer;
+}
+
+/* Hotbar */
+#hotbar {
+    position: fixed;
+    top: 50%;
+    left: -60px; /* скрыта за экраном */
+    transform: translateY(-50%);
+    width: 60px;
+    background: rgba(30, 30, 30, 0.9);
+    border-radius: 0 10px 10px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    transition: left 0.3s ease;
+    z-index: 1000;
+}
+
+#hotbar.show {
+    left: 0; /* выезжает при наведении на край */
+}
+
+.hotbar-button {
+    width: 40px;
+    height: 40px;
+    margin: 8px 0;
+    background: #444;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.hotbar-button:hover {
+    background: #666;
+}

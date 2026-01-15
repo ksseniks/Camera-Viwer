@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Камеры</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div id="hotbar">
+      <!-- Общие кнопки -->
+      <button class="hotbar-button" title="Общие настройки" onclick="window.location='/settings'">⚙</button>
+
+      <!-- Кнопки для камер -->
+      {% for cam in cameras %}
+          <button class="hotbar-button" title="Настройки {{ cam.name }}" onclick="window.location='/camera/{{ loop.index0 }}'">
+              {{ cam.name }}
+          </button>
+      {% endfor %}
+      <button class="hotbar-button" title="Добавить камеру" onclick="window.location='/camera/add'">➕</button>
+  </div>
+
+  <div id="container" class="grid-container" style="--rows: {{ rows }}; --cols: {{ cols }};" data-rows="{{ rows }}" data-cols="{{ cols }}">
+    {% for i in range(rows * cols) %}
+      {% if i < cameras|length %}
+        <div class="camera" data-index="{{ loop.index0 }}" data-name="{{ cameras[i].name }}">
+          <h2>{{ cameras[i].name }}</h2>
+          <img src="{{ url_for('video', cam_id=i) }}" alt="Камера {{ cameras[i].name }}" draggable="false">
+        </div>
+      {% else %}
+        <div class="camera no-camera"></div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <script src="{{ url_for('static', filename='scripts/main.js') }}"></script>
+  <script src="{{ url_for('static', filename='scripts/hotbar.js') }}"></script>
+</body>
+</html>

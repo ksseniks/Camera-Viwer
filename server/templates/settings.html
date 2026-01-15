@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Настройки модели</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #1e1e1e;
+        color: #fff;
+    }
+    .container {
+        width: 600px;
+        margin: auto;
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    h1 {
+        color: #8ecfff;
+    }
+    label {
+        display: block;
+        margin-top: 15px;
+    }
+    input {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 5px;
+    }
+    small {
+        color: #bbb;
+        font-size: 12px;
+    }
+    button {
+        margin-top: 25px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background: #4CAF50;
+        color: #fff;
+        cursor: pointer;
+        font-size: 16px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Общая настройка детекции</h1>
+
+    <form method="POST" action="/saveSettings">
+
+        <label>
+            Название модели
+            <small>(пример: yolo8person.pt)</small>
+        </label>
+        <input name="modelName" value="{{ settings.modelName }}">
+
+        <label>
+            Минимальное количество кадров движения
+            <small>(min_motion_frames)</small>
+        </label>
+        <input type="number" name="min_motion_frames" value="{{ settings.min_motion_frames or 3 }}">
+
+        <label>
+            Максимальное количество ROI
+            <small>(max_rois)</small>
+        </label>
+        <input type="number" name="max_rois" value="{{ settings.max_rois or 3 }}">
+
+        <label>
+            Минимальная площадь движения
+            <small>(min_motion_area)</small>
+        </label>
+        <input type="number" name="min_motion_area" value="{{ settings.min_motion_area or 500 }}">
+
+        <button type="submit">Сохранить</button>
+    </form>
+</div>
+
+</body>
+</html>

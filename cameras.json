@@ -1,0 +1,19 @@
+{
+    "modelName": "yolo8person.pt",
+    "min_motion_frames": 3,
+    "max_rois": 3,
+    "min_motion_area": 500,
+    "cameras": [
+        {
+            "name": "Окно",
+            "stream_view": "rtsp://pb.kvant:pb.kvant@192.168.0.144:554/stream2",
+            "stream_record": "rtsp://pb.kvant:pb.kvant@192.168.0.144:554/stream2",
+            "record_duration_minutes": 30,
+            "event_duration_seconds": 5,
+            "searchObjectList": [],
+            "threshold": 0.01,
+            "minWeight": 0.5,
+            "roi": []
+        }
+    ]
+}

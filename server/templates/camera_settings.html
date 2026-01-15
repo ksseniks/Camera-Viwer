@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Настройки камеры</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #1e1e1e;
+        color: #fff;
+    }
+    .container {
+        width: 700px;
+        margin: auto;
+        background: #2a2a2a;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    h2 {
+        margin-top: 30px;
+        color: #8ecfff;
+    }
+    label { display: block; margin-top: 15px; }
+    input, textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 5px;
+    }
+    button {
+        margin-top: 25px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background: #4CAF50;
+        color: #fff;
+        cursor: pointer;
+        font-size: 16px;
+    }
+    small {
+        color: #bbb;
+        font-size: 12px;
+    }
+    #canvasContainer {
+        position: relative;
+        width: 640px;
+        height: 480px;
+        border: 1px solid #555;
+        margin-bottom: 15px;
+    }
+    #cameraCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 2;
+    }
+    #cameraVideo {
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        width: 640px;
+        height: 480px;
+        object-fit: cover;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Настройки камеры</h1>
+
+    <form method="POST" action="/saveCameraSettings/{{ cam_id }}">
+        <div id="canvasContainer" style="position: relative; display: inline-block; line-height: 0; width: 640px;  height: auto;">
+            <img id="cameraImage" src="/snapshot/{{ cam_id }}" style="display: block; width: 100%; height: auto; margin: 0; padding: 0;">
+            <canvas id="cameraCanvas" style="position: absolute; top:0; left:0; width: 100%; height: auto; display:block;"></canvas>
+        </div>
+
+
+        <script>
+        const img = document.getElementById("cameraImage");
+        const canvas = document.getElementById("cameraCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const rows = 7;
+        const cols = 12;
+        let cellWidth, cellHeight;
+        let selectedROIs = [];
+
+        img.onload = () => {
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+            canvas.style.width = img.width + "px";
+            canvas.style.height = img.height + "px";
+
+            cellWidth = canvas.width / cols;
+            cellHeight = canvas.height / rows;
+
+            drawGrid();
+        };
+
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= cols; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellWidth, 0);
+                ctx.lineTo(i * cellWidth, canvas.height);
+                ctx.stroke();
+            }
+            for (let j = 0; j <= rows; j++) {
+                ctx.beginPath();
+                ctx.moveTo(0, j * cellHeight);
+                ctx.lineTo(canvas.width, j * cellHeight);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = "rgba(0, 255, 0, 0.4)";
+            selectedROIs.forEach(r => {
+                ctx.fillRect(r.x, r.y, r.width, r.height);
+            });
+        }
+
+        canvas.addEventListener("click", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            const col = Math.floor(x / cellWidth);
+            const row = Math.floor(y / cellHeight);
+
+            const roi = {
+                x: col * cellWidth,
+                y: row * cellHeight,
+                width: cellWidth,
+                height: cellHeight
+            };
+
+            const index = selectedROIs.findIndex(r => r.x === roi.x && r.y === roi.y);
+            if (index >= 0) selectedROIs.splice(index, 1);
+            else selectedROIs.push(roi);
+
+            drawGrid();
+        });
+        </script>
+
+        <h2>Основные параметры</h2>
+
+        <label>Название камеры <small>(например: Окно, Коридор 1)</small></label>
+        <input name="name" placeholder="Окно" value="{{ camera.name }}">
+
+        <h2>Запись и события</h2>
+
+        <label>Длительность записи (минуты) <small>(пример: 30)</small></label>
+        <input type="number" name="record_duration_minutes" placeholder="30" value="{{ camera.record_duration_minutes }}">
+
+        <label>Длительность события (секунды) <small>(пример: 5)</small></label>
+        <input type="number" name="event_duration_seconds" placeholder="5" value="{{ camera.event_duration_seconds }}">
+
+        <h2>Детекция объектов</h2>
+
+        <label>Список объектов поиска <small>(пример: person car)</small></label>
+        <textarea name="searchObjectList" placeholder='person, car'>{% for object in camera.searchObjectList %} {{object}} {% endfor %}</textarea>
+
+        <label>Порог обнаружения (threshold) <small>(пример: 0.25)</small></label>
+        <input type="number" step="0.001" name="threshold" placeholder="0.25" value="{{ camera.threshold }}">
+
+        <label>Мин. вес объекта (minWeight) <small>(пример: 0.5)</small></label>
+        <input type="number" step="0.01" name="minWeight" placeholder="0.5" value="{{ camera.minWeight }}">
+
+        <input type="hidden" name="roi_x">
+        <input type="hidden" name="roi_y">
+        <input type="hidden" name="roi_width">
+        <input type="hidden" name="roi_height">
+
+        <button type="submit">Сохранить</button>
+    </form>
+    <form method="POST" action="/camera/delete/{{ cam_id }}" style="display:inline;">
+        <button type="submit" title="Удалить камеру">Удалить камеру</button>
+    </form>
+</div>
+
+</body>
+</html>
