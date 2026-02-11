@@ -57,11 +57,11 @@ def start_background_tasks(config):
         daemon=True
     ).start()
 
-    threading.Thread(
-        target=RunCameraAlert,
-        args=(config,),
-        daemon=True
-    ).start()
+    # threading.Thread(
+    #     target=RunCameraAlert,
+    #     args=(config,),
+    #     daemon=True
+    # ).start()
 
     threading.Thread(
         target=EventRecorder,
@@ -79,6 +79,9 @@ def start_camera(cam, config):
     from queue import Queue
     if "frameQueue" not in cam:
         cam["frameQueue"] = Queue()
+
+    if "eventQueue" not in cam:
+        cam["eventQueue"] = Queue()
 
     threading.Thread(
         target=camera_reader,

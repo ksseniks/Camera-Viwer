@@ -62,24 +62,6 @@
         </label>
         <input name="modelName" value="{{ settings.modelName }}">
 
-        <label>
-            Минимальное количество кадров движения
-            <small>(min_motion_frames)</small>
-        </label>
-        <input type="number" name="min_motion_frames" value="{{ settings.min_motion_frames or 3 }}">
-
-        <label>
-            Максимальное количество ROI
-            <small>(max_rois)</small>
-        </label>
-        <input type="number" name="max_rois" value="{{ settings.max_rois or 3 }}">
-
-        <label>
-            Минимальная площадь движения
-            <small>(min_motion_area)</small>
-        </label>
-        <input type="number" name="min_motion_area" value="{{ settings.min_motion_area or 500 }}">
-
         <button type="submit">Сохранить</button>
     </form>
 </div>

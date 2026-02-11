@@ -52,32 +52,6 @@ def video(cam_id):
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
 
-
-# =============================================================================
-# --------------------- SET ROI ------------------------------------------
-@app.route('/setroi/<camera_name>', methods=['POST'])
-def setroi(camera_name):
-    data = request.json
-    if not data:
-        return jsonify({"error": "Нет данных"}), 400
-
-    roi = {
-        "x": int(data['x']),
-        "y": int(data['y']),
-        "width": int(data['width']),
-        "height": int(data['height'])
-    }
-
-    cameras = CONFIG.get_cameras()
-    for cam in cameras:
-        if cam["name"] == camera_name:
-            cam["roi"] = roi
-            CONFIG.save()
-            return jsonify({"message": "ROI обновлён", "roi": roi})
-
-    return jsonify({"error": "Камера не найдена"}), 404
-
-
 # =============================================================================
 # --------------------- CAMERA SETTINGS ----------------------------------
 @app.route("/settings")
@@ -109,7 +83,9 @@ def add_camera():
             "event_duration_seconds": int(request.form.get("event_duration_seconds", 5)),
             "searchObjectList": request.form.get("searchObjectList", "").split(),
             "threshold": float(request.form.get("threshold", 0.25)),
+            "min_motion_area": int(request.form.get("min_motion_area", 2500)),
             "minWeight": float(request.form.get("minWeight", 0.5)), 
+            "rois": [],
         }
 
         CONFIG.cameras.append(cam)
@@ -145,7 +121,9 @@ def saveNewCamera():
         "event_duration_seconds": 5,
         "searchObjectList": [],
         "threshold": 0.25,
-        "minWeight": 0.5
+        "min_motion_area": 2500,
+        "minWeight": 0.5,
+        "rois": [],
     }
 
     cam.update(default_cam)
@@ -159,7 +137,7 @@ def saveNewCamera():
             cam[key] = value.split()
         elif key in ("threshold", "minWeight"):
             cam[key] = float(value)
-        elif key in ("record_duration_minutes", "event_duration_seconds"):
+        elif key in ("record_duration_minutes", "event_duration_seconds", "min_motion_area"):
             cam[key] = int(value)
         else:
             cam[key] = value
@@ -209,41 +187,50 @@ def saveCameraSettings(cam_id):
             continue
 
         if key == "searchObjectList":
-            cam[key] = value.split()
+            cam[key] = [obj.strip() for obj in value.split() if obj.strip()]
+        elif key == "rois":
+            if value.strip():
+                cam[key] = [int(x.strip()) for x in value.split(',') if x.strip().isdigit()]
+            else:
+                cam[key] = []
         elif key in ("threshold", "minWeight"):
-            cam[key] = float(value)
-        elif key in ("record_duration_minutes", "event_duration_seconds"):
-            cam[key] = int(value)
+            try:
+                cam[key] = float(value)
+            except ValueError:
+                cam[key] = 0.0
+        elif key in ("record_duration_minutes", "event_duration_seconds", "min_motion_area"):
+            try:
+                cam[key] = int(value)
+            except ValueError:
+                cam[key] = 0
         else:
             cam[key] = value
-
-    # --------------------- SAVE ROI -------------------------------
-    roi_x = request.form.getlist("roi_x")
-    roi_y = request.form.getlist("roi_y")
-    roi_width = request.form.getlist("roi_width")
-    roi_height = request.form.getlist("roi_height")
-
-    rois = []
-    for x, y, w, h in zip(roi_x, roi_y, roi_width, roi_height):
-        try:
-            r = {
-                "x": int(float(x)),
-                "y": int(float(y)),
-                "width": int(float(w)),
-                "height": int(float(h))
-            }
-            rois.append(r)
-        except ValueError:
-            continue
-
-    cam["roi"] = rois
-
-    if "detector" in cam and cam["detector"] is not None:
-        cam["detector"].setRoi(rois) 
 
     CONFIG.save()
 
     return redirect('/')
+
+
+def IndicesToCoordinates(indices, grid_cols=12, grid_rows=7, image_width=640, image_height=480):
+    if not indices:
+        return []
+    
+    cell_width = image_width / grid_cols
+    cell_height = image_height / grid_rows
+    
+    coordinates = []
+    for index in indices:
+        row = index // grid_cols
+        col = index % grid_cols
+        
+        coordinates.append({
+            'x': int(col * cell_width),
+            'y': int(row * cell_height),
+            'width': int(cell_width),
+            'height': int(cell_height)
+        })
+    
+    return coordinates
 
 
 # =============================================================================
@@ -254,15 +241,6 @@ def saveSettings():
 
     if "modelName" in request.form:
         settings["modelName"] = request.form.get("modelName")
-
-    if "min_motion_frames" in request.form:
-        settings["min_motion_frames"] = int(request.form.get("min_motion_frames"))
-
-    if "max_rois" in request.form:
-        settings["max_rois"] = int(request.form.get("max_rois"))
-
-    if "min_motion_area" in request.form:
-        settings["min_motion_area"] = int(request.form.get("min_motion_area"))
 
     CONFIG.save()
     return redirect("/")

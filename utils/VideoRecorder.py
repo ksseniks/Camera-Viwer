@@ -14,7 +14,7 @@ def StartRecordingCameras(config):
     for cam in config.get_cameras():
         t = threading.Thread(
             target=record_camera,
-            args=(cam,),
+            args=(cam, config.get_settings()),
             daemon=True
         )
         threads.append(t)
@@ -70,7 +70,7 @@ class SafeVideoWriter:
 
 # =============================================================================
 # ----------------------------- RECORD CAMERA-------------------------------
-def record_camera(cam):
+def record_camera(cam, settings):
     url = cam["stream_record"]
     writeLog(f"Старт постоянной записи → {url}", cam["name"])
 
@@ -112,6 +112,11 @@ def record_camera(cam):
                     cap = None
                     break
 
+                cam["fps"] = fps
+                if cam["eventQueue"].qsize() > int(cam["event_duration_seconds"] * fps * 2):
+                    cam["eventQueue"].get()
+                cam["eventQueue"].put(frame.copy()) 
+
                 out.write(frame)
 
                 if time.time() - start_time >= int(cam["record_duration_minutes"]) * 60:
@@ -122,7 +127,7 @@ def record_camera(cam):
                     break
 
             out.release()
-            FolderCleaner(save_dir, 30)
+            FolderCleaner(save_dir, settings["countRecordVideo"])
 
             if url != cam["stream_record"]:
                 StartRecordCamera(cam)

@@ -30,24 +30,18 @@ class CameraConfig:
             with open(self.CAMERA_CONFIG_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            old_cameras = {cam["name"]: cam for cam in self.cameras}
-
             self.settings = {
                 "modelName": data.get("modelName", "yolo8.pt"),
-                "min_motion_frames": data.get("min_motion_frames", 3),
-                "max_rois": data.get("max_rois", 3),
-                "min_motion_area": data.get("min_motion_area",  500),
+                "countEventVideo": data.get("countEventVideo", 6),
+                "countRecordVideo": data.get("countRecordVideo", 30),
             }
 
             self.cameras.clear()
 
             for cam in data.get("cameras", []):
                 name = cam["name"]
-
-                if name in old_cameras:
-                    frame_queue = old_cameras[name]["frameQueue"]
-                else:
-                    frame_queue = queue.Queue(maxsize=5)
+                frame_queue = queue.Queue(maxsize=5)
+                event_queue = queue.Queue()
 
                 self.cameras.append({
                     "name": name,
@@ -57,9 +51,12 @@ class CameraConfig:
                     "event_duration_seconds": cam.get("event_duration_seconds", 5),
                     "searchObjectList": cam.get("searchObjectList", []),
                     "threshold": cam.get("threshold", 0.01),
+                    "min_motion_area": cam.get("min_motion_area",  5000),
                     "minWeight": cam.get("minWeight", 0.3),
-                    "roi": cam.get("roi"),
-                    "frameQueue": frame_queue
+                    "rois": cam.get("rois", []),
+                    "frameQueue": frame_queue,
+                    "eventQueue": event_queue,
+                    "fps": 60
                 })
 
 
@@ -67,9 +64,8 @@ class CameraConfig:
         with self._lock:
             data = {
                 "modelName": self.settings.get("modelName"),
-                "min_motion_frames": self.settings.get("min_motion_frames"),
-                "max_rois": self.settings.get("max_rois"),
-                "min_motion_area": self.settings.get("min_motion_area"),
+                "countEventVideo": self.settings.get("countEventVideo", 6),
+                "countRecordVideo": self.settings.get("countRecordVideo", 30),
                 "cameras": []
             }
 
@@ -82,8 +78,9 @@ class CameraConfig:
                     "event_duration_seconds": cam.get("event_duration_seconds"),
                     "searchObjectList": cam.get("searchObjectList"),
                     "threshold": cam.get("threshold"),
+                    "min_motion_area": cam.get("min_motion_area"),
                     "minWeight": cam.get("minWeight"),
-                    "roi": cam.get("roi"),
+                    "rois": cam.get("rois"),
                 })
 
             with open(self.CAMERA_CONFIG_FILE, "w", encoding="utf-8") as f:

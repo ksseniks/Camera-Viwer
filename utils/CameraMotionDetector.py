@@ -2,6 +2,7 @@ import os
 import cv2
 import numpy as np
 from ultralytics import YOLO
+from main import writeLog
 
 # ------------------------------ MAIN VARIABLES -------------------------------- #
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -9,126 +10,101 @@ PROJECT_DIR = os.path.dirname(BASE_DIR)
 MODEL_FOLDER = os.path.join(PROJECT_DIR, "models")
 os.makedirs(MODEL_FOLDER, exist_ok=True)
 # ============================================================================= #
-
-
 class CameraMotionDetector:
-    def __init__(
-        self,
-        threshold=0.02,
-        minWeight=0.6,
-        model_name="yolo8.pt",
-        searchObjectList=None,
-        roi=None,
-        min_motion_frames=2,
-        max_rois=3,
-        min_motion_area = 500,
-    ):
-        self.prevFrame = None
-        self.motionFrameCounter = 0
-        self.threshold = threshold
-        self.minWeight = minWeight
-        self.searchObjectList = searchObjectList or []
-        self.roi = roi or []
-        self.min_motion_frames = min_motion_frames
-        self.max_rois = max_rois
-        self.min_motion_area = min_motion_area
+    def __init__(self, model_name="yolo8.pt"):
+        self.prev_gray = None
+        self.motion_counter = 0
 
         model_path = os.path.join(MODEL_FOLDER, model_name)
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Модель не найдена: {model_path}")
+            writeLog(f"Модель не найдена")
 
         self.yolo = YOLO(model_path)
 
     # ========================================================================== #
-    # ------------------------------ PREPARE FRAME ----------------------------- #
-    def _preprocess(self, frame):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        return cv2.GaussianBlur(gray, (15, 15), 0)
-
-    # ========================================================================== #
     # ------------------------------ APPLY ROI MASK ----------------------------- #
-    def apply_roi_mask(self, frame):
-        if not self.roi:
+    def apply_roi_mask(self, frame, rois):
+        if not rois:
             return frame
+        
+        height, width = frame.shape[:2]
+        
+        grid_rows = 7
+        grid_cols = 12
 
-        mask = np.zeros(frame.shape[:2], dtype=np.uint8)
-        for r in self.roi:
-            x, y, w, h = r["x"], r["y"], r["width"], r["height"]
-            mask[y : y + h, x : x + w] = 255
-
-        return cv2.bitwise_and(frame, frame, mask=mask)
-
+        cell_width = width // grid_cols
+        cell_height = height // grid_rows
+        
+        masked_frame = np.zeros_like(frame)
+        
+        for cell_id in rois:
+            row = cell_id // grid_cols
+            col = cell_id % grid_cols
+            
+            x = col * cell_width
+            y = row * cell_height
+            
+            x_end = (col + 1) * cell_width if col < grid_cols - 1 else width
+            y_end = (row + 1) * cell_height if row < grid_rows - 1 else height
+            
+            w = x_end - x
+            h = y_end - y
+            
+            masked_frame[y:y + h, x:x + w] = frame[y:y + h, x:x + w]
+        
+        return masked_frame
     # ========================================================================== #
     # ------------------------------ DETECT MOTION ------------------------------ #
-    def detect_motion_rois(self, frame):
-        frame = self.apply_roi_mask(frame)
-        gray = self._preprocess(frame)
+    def detectMotion(self, frame, cam):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (5, 5), 0)
 
-        if self.prevFrame is None:
-            self.prevFrame = gray
-            return []
+        if self.prev_gray is None:
+            self.prev_gray = gray
+            return False
 
-        diff = cv2.absdiff(self.prevFrame, gray)
-        _, thresh = cv2.threshold(diff, 25, 255, cv2.THRESH_BINARY)
+        diff = cv2.absdiff(self.prev_gray, gray)
 
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, np.ones((5, 5)))
+        _, thresh = cv2.threshold(diff, cam["threshold"], 255, cv2.THRESH_BINARY)
 
-        motion_pixels = cv2.countNonZero(thresh)
-        roi_area = frame.shape[0] * frame.shape[1]
-
-        self.prevFrame = gray
-
-        if motion_pixels < roi_area * self.threshold:
-            self.motionFrameCounter = 0
-            return []
-
-        self.motionFrameCounter += 1
-        if self.motionFrameCounter < self.min_motion_frames:
-            return []
-
-        self.motionFrameCounter = 0
+        thresh = cv2.dilate(thresh, None, iterations=2)
 
         contours, _ = cv2.findContours(
             thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
 
-        rois = []
+        self.prev_gray = gray
+
+        motion_area = 0
         for cnt in contours:
-            if cv2.contourArea(cnt) < self.min_motion_area:
-                continue
+            motion_area += cv2.contourArea(cnt)
+            return motion_area > cam["min_motion_area"]
 
-            x, y, w, h = cv2.boundingRect(cnt)
-            if h < 160 or w < 160:
-                continue
-
-            pad = 20
-            x = max(0, x - pad)
-            y = max(0, y - pad)
-            w = min(frame.shape[1] - x, w + pad * 2)
-            h = min(frame.shape[0] - y, h + pad * 2)
-
-            rois.append(frame[y : y + h, x : x + w])
-
-        return rois[: self.max_rois]
-
+        return False
     # ========================================================================== #
     # ------------------------------ YOLO DETECTION ----------------------------- #
-    def detect_people(self, frame):
-        motion_rois = self.detect_motion_rois(frame)
+    def detectPeople(self, frame, cam):
+        image = self.apply_roi_mask(frame, cam["rois"])
+        detection = self.detectMotion(image, cam)
 
-        if not motion_rois:
+        if self.motion_counter <= 3 and detection:
+            self.motion_counter += 1
+            return False
+        elif not detection:
+            self.motion_counter = 0
             return False
 
-        for roi in motion_rois:
-            results = self.yolo(roi, device="cpu", verbose=False)
+        
+        self.motion_counter = 0
+        results = self.yolo(image, device="cpu", verbose=False)
 
-            for r in results:
-                for box in r.boxes:
-                    cls_id = int(box.cls[0])
-                    conf = float(box.conf[0])
-                    print(conf)
+        for r in results:
+            for box in r.boxes:
+                cls_id = int(box.cls[0])
+                conf = float(box.conf[0])
+                print(conf)
 
-                    if ((not self.searchObjectList or cls_id in self.searchObjectList) and conf >= self.minWeight):
-                        return True
+                if ((not cam["searchObjectList"] or cls_id in cam["searchObjectList"]) and conf >= cam["minWeight"]):
+                    return True
 
         return False

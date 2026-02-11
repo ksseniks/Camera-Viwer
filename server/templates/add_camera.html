@@ -85,10 +85,13 @@
         <textarea name="searchObjectList"></textarea>
 
         <label>Порог обнаружения</label>
-        <input type="number" step="0.01" name="threshold" value="0.25">
+        <input type="number" step="0.01" name="threshold" value="25">
+
+        <label> Минимальная площадь движения </label>
+        <input type="number" name="min_motion_area" value="2500">
 
         <label>Мин. вес объекта</label>
-        <input type="number" step="0.01" name="minWeight" value="0.5">
+        <input type="number" step="0.01" name="minWeight" value="0.7">
 
         <button type="submit">Добавить камеру</button>
     </form>
