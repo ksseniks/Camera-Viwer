@@ -4,7 +4,7 @@ import aiohttp
 import random
 # ========================================================================== #
 # ------------------------------ MAIN VARIABLES ----------------------------- #
-TOKEN = "vk1.a.91GtRuYMjqyv2wK6UaXSktp5BH7P6-jl2xZDPHMh6KrtOeXvRorsAjSQIOQZZfRgjz5EZL8bllCEoLXL_QoSD8SJLGf4Z9yi9xB9Xnnq7PCueI1i6Xek6m9ztDd7_0bEC3FUGUaqFkjoIpWvYSIDQK8cb8YH7dOyk7mdtaEpij5DZYL1EUpx_56lGA24nxnP_j-_4Zp9G3_fEuOd2r5cBg"
+TOKEN = ""
 CHAT_ID = 68
 # ========================================================================== #
 # ------------------------------ VK SETUP ----------------------------------- #
