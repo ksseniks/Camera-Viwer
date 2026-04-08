@@ -55,7 +55,8 @@ signal.signal(signal.SIGTERM, safe_exit)
 class SafeVideoWriter:
     def __init__(self, path, fps, frame_size):
         self.lock = threading.Lock()
-        self.writer = cv2.VideoWriter(path, cv2.VideoWriter_fourcc(*"mp4v"), fps, frame_size)
+        fourcc = cv2.VideoWriter_fourcc(*'H264')
+        self.writer = cv2.VideoWriter(path, fourcc, fps, frame_size)
 
     def write(self, frame):
         with self.lock:

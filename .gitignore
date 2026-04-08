@@ -1,4 +1,3 @@
-bots/__pycache__/CameraAlertBot.cpython-310.pyc
 recordings/events/Окно_event_20260402_141714.mp4
 recordings/events/Окно_event_20260402_142327.mp4
 recordings/events/Окно_event_20260403_112703.mp4
@@ -507,3 +506,14 @@ utils/__pycache__/EventRecorder.cpython-310.pyc
 utils/__pycache__/VideoRecorder.cpython-310.pyc
 models/yolo8person.pt
 models/yolo11n.pt
+bots/CameraAlertBot.py
+.gitignore
+recordings/records/2026-04-08/Окно/2026-04-08_14-54-43.mp4
+recordings/records/2026-04-08/Окно/2026-04-08_15-24-46.mp4
+recordings/records/2026-04-08/Окно/2026-04-08_15-54-46.mp4
+recordings/records/2026-04-08/Окно/2026-04-08_16-13-23.mp4
+bots/__pycache__/CameraAlertBot.cpython-310.pyc
+bots/__pycache__/CameraAlertBot.cpython-310.pyc
+utils/__pycache__/VideoRecorder.cpython-310.pyc
+utils/__pycache__/VideoRecorder.cpython-310.pyc
+.gitignore
