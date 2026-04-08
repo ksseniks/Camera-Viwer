@@ -507,7 +507,6 @@ utils/__pycache__/VideoRecorder.cpython-310.pyc
 models/yolo8person.pt
 models/yolo11n.pt
 bots/CameraAlertBot.py
-.gitignore
 recordings/records/2026-04-08/Окно/2026-04-08_14-54-43.mp4
 recordings/records/2026-04-08/Окно/2026-04-08_15-24-46.mp4
 recordings/records/2026-04-08/Окно/2026-04-08_15-54-46.mp4
@@ -517,3 +516,4 @@ bots/__pycache__/CameraAlertBot.cpython-310.pyc
 utils/__pycache__/VideoRecorder.cpython-310.pyc
 utils/__pycache__/VideoRecorder.cpython-310.pyc
 .gitignore
+
