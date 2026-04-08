@@ -61,7 +61,7 @@ class CameraMotionDetector:
 
         if self.prev_gray is None:
             self.prev_gray = gray
-            return False
+            return False, 0
 
         diff = cv2.absdiff(self.prev_gray, gray)
 
@@ -78,23 +78,25 @@ class CameraMotionDetector:
         motion_area = 0
         for cnt in contours:
             motion_area += cv2.contourArea(cnt)
-            return motion_area > cam["min_motion_area"]
+            return motion_area > cam["min_motion_area"], motion_area
 
-        return False
+        return False, 0
     # ========================================================================== #
     # ------------------------------ YOLO DETECTION ----------------------------- #
     def detectPeople(self, frame, cam):
         image = self.apply_roi_mask(frame, cam["rois"])
-        detection = self.detectMotion(image, cam)
+        detection, motion_area = self.detectMotion(image, cam)
 
-        if self.motion_counter <= 3 and detection:
-            self.motion_counter += 1
-            return False
-        elif not detection:
-            self.motion_counter = 0
+        # if self.motion_counter <= 3 and detection:
+        #     self.motion_counter += 1
+        #     return False
+        # elif not detection:
+        #     self.motion_counter = 0
+        #     return False
+
+        if not detection:
             return False
 
-        
         self.motion_counter = 0
         results = self.yolo(image, device="cpu", verbose=False)
 
@@ -103,6 +105,7 @@ class CameraMotionDetector:
                 cls_id = int(box.cls[0])
                 conf = float(box.conf[0])
                 print(conf)
+                print(motion_area)
 
                 if ((not cam["searchObjectList"] or cls_id in cam["searchObjectList"]) and conf >= cam["minWeight"]):
                     return True

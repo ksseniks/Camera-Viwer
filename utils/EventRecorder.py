@@ -1,14 +1,13 @@
 import cv2
 import os
-import time
+import asyncio
 import threading
 from datetime import datetime
-from collections import deque
 
+from bots.CameraAlertBot import SendVideo
 from main import writeLog, FolderCleaner
 from utils.CameraMotionDetector import CameraMotionDetector as Detector
 
-PREBUFFER_FRAMES = 30 
 # =============================================================================
 # ----------------------------- EVENT RECORDER -------------------------------
 def EventRecorder(config):
@@ -28,8 +27,9 @@ def startCameraEvent(cam, settings):
     detector = Detector(
         model_name=settings["modelName"],
     )
+    writeLog("Начат поиск обьекта", cam["name"])
     while not cam.get("stop", False):
-        if (cam['eventQueue'].qsize() > int(cam["event_duration_seconds"] * cam["fps"] * 2 - 1)):
+        if (cam['eventQueue'].qsize() >= int(cam["event_duration_seconds"] * cam["fps"] * 2 - 2)):
             frame = cam["eventQueue"].get()
             if detector.detectPeople(frame, cam):
                 writeLog("Обнаружен объект! Начало записи события", cam["name"])
@@ -54,7 +54,7 @@ def save_event_video(cam, fps, settings):
         except:
             break
     
-    needed_frames = int(cam["event_duration_seconds"] * fps + fps * 2)
+    needed_frames = int(cam["event_duration_seconds"] * fps + fps * 5)
     frames_batch = all_frames[-needed_frames:] if len(all_frames) >= needed_frames else all_frames
     
     if frames_batch:
@@ -65,5 +65,7 @@ def save_event_video(cam, fps, settings):
             out.write(frame)
         
         out.release()
+        asyncio.run(SendVideo(filepath))
+
         writeLog(f"Событие сохранено: {filepath}", cam["name"])
         FolderCleaner(event_dir, settings["countEventVideo"])

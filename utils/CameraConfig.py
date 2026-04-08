@@ -40,7 +40,7 @@ class CameraConfig:
 
             for cam in data.get("cameras", []):
                 name = cam["name"]
-                frame_queue = queue.Queue(maxsize=5)
+                frame_queue = queue.Queue(maxsize=2)
                 event_queue = queue.Queue()
 
                 self.cameras.append({

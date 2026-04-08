@@ -11,18 +11,25 @@
         color: #fff;
     }
     .container {
-        width: 700px;
+        width: 800px;
         margin: auto;
         background: #2a2a2a;
         padding: 20px;
         border-radius: 10px;
     }
     h2 {
-        margin-top: 30px;
+        margin-top: 25px;
         color: #8ecfff;
+        font-size: 18px;
+        border-bottom: 1px solid #555;
+        padding-bottom: 5px;
     }
-    label { display: block; margin-top: 15px; }
-    input, textarea {
+    label { 
+        display: block; 
+        margin-top: 15px; 
+        font-weight: bold;
+    }
+    input, select, textarea {
         width: 100%;
         padding: 8px;
         margin-top: 5px;
@@ -30,9 +37,10 @@
         color: #fff;
         border: 1px solid #555;
         border-radius: 5px;
+        box-sizing: border-box;
     }
     button {
-        margin-top: 25px;
+        margin-top: 20px;
         padding: 10px 20px;
         border: none;
         border-radius: 5px;
@@ -41,9 +49,107 @@
         cursor: pointer;
         font-size: 16px;
     }
+    button:hover {
+        background: #45a049;
+    }
+    .btn-scan {
+        background: #2196F3;
+        width: 100%;
+    }
+    .btn-scan:hover {
+        background: #0b7dda;
+    }
+    .btn-find {
+        background: #9C27B0;
+        width: 100%;
+        margin-top: 10px;
+    }
+    .btn-find:hover {
+        background: #7B1FA2;
+    }
     small {
         color: #bbb;
+        font-size: 11px;
+        display: block;
+        margin-top: 3px;
+    }
+    .status {
+        padding: 10px;
+        margin-top: 10px;
+        border-radius: 5px;
+        font-size: 13px;
+    }
+    .status.success {
+        background: #1e4620;
+        color: #8bc34a;
+    }
+    .status.error {
+        background: #4a1e1e;
+        color: #ff6b6b;
+    }
+    .status.info {
+        background: #1e3a4a;
+        color: #64b5f6;
+    }
+    .flex-row {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    hr {
+        border-color: #555;
+        margin: 20px 0;
+    }
+    
+    /* Стили для выпадающего списка */
+    .input-wrapper {
+        position: relative;
+        width: 100%;
+    }
+    .dropdown-list {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 5px;
+        z-index: 1000;
+        display: none;
+        margin-top: 2px;
+    }
+    .dropdown-list.show {
+        display: block;
+    }
+    .dropdown-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #444;
+        font-family: monospace;
         font-size: 12px;
+    }
+    .dropdown-item:hover {
+        background: #4CAF50;
+    }
+    .dropdown-item:last-child {
+        border-bottom: none;
+    }
+    
+    .loading {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #fff;
+        border-radius: 50%;
+        border-top-color: transparent;
+        animation: spin 1s linear infinite;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
     }
 </style>
 </head>
@@ -52,50 +158,298 @@
 <div class="container">
     <h1>Добавить новую камеру</h1>
 
-    <form method="POST" action="/camera/add">
-
-        <h2>Основные параметры</h2>
-
+    <form method="POST" action="/camera/add" id="cameraForm" onsubmit="return validateForm()">
+        
+        <h2>Поиск камеры в сети</h2>
+        
+        <div class="flex-row">
+            <input type="text" id="subnet" placeholder="192.168.0.0/24" value="192.168.0.0/24">
+            <button type="button" class="btn-scan" onclick="scanNetwork()">🔍 Сканировать</button>
+        </div>
+        
+        <div id="scanResult" style="margin-top: 10px;"></div>
+        
+        <label>IP-адрес камеры</label>
+        <div class="input-wrapper">
+            <input type="text" id="cameraIp" name="ip" placeholder="192.168.0.105" autocomplete="off">
+            <div id="cameraDropdown" class="dropdown-list"></div>
+        </div>
+        <small>Нажмите на поле для выбора из найденных камер или введите вручную</small>
+        
+        <label>Логин</label>
+        <input type="text" id="rtspLogin" placeholder="admin" value="admin">
+        
+        <label>Пароль</label>
+        <input type="password" id="rtspPassword" placeholder="пароль">
+        
+        <!-- Кнопка поиска потоков -->
+        <button type="button" class="btn-find" onclick="findWorkingStreams()">🎬 Найти доступные потоки</button>
+        
+        <div id="connectionStatus" style="display:none;"></div>
+        
+        <label>Поток для просмотра (stream_view)</label>
+        <div class="input-wrapper">
+            <input type="text" name="stream_view" id="streamView" placeholder="rtsp://..." autocomplete="off">
+            <div id="viewDropdown" class="dropdown-list"></div>
+        </div>
+        <small>Нажмите на поле для выбора доступного потока или введите вручную</small>
+        
+        <label>Поток для записи (stream_record)</label>
+        <div class="input-wrapper">
+            <input type="text" name="stream_record" id="streamRecord" placeholder="rtsp://..." autocomplete="off">
+            <div id="recordDropdown" class="dropdown-list"></div>
+        </div>
+        <small>Нажмите на поле для выбора доступного потока или введите вручную</small>
+        
         <label>Название камеры</label>
-        <input name="name" placeholder="Коридор 1">
-
-        <label>
-            Поток для просмотра
-            <small>(stream_view)</small>
-        </label>
-        <input name="stream_view" placeholder="rtsp://...">
-
-        <label>
-            Поток для записи
-            <small>(stream_record)</small>
-        </label>
-        <input name="stream_record" placeholder="rtsp://...">
-
+        <input name="name" placeholder="Коридор 1" id="cameraName">
+        
         <h2>Запись и события</h2>
-
+        
         <label>Длительность записи (минуты)</label>
         <input type="number" name="record_duration_minutes" value="30">
-
+        
         <label>Длительность события (секунды)</label>
         <input type="number" name="event_duration_seconds" value="5">
-
+        
         <h2>Детекция объектов</h2>
-
+        
         <label>Список объектов поиска</label>
-        <textarea name="searchObjectList"></textarea>
-
+        <textarea name="searchObjectList" placeholder="person car"></textarea>
+        
         <label>Порог обнаружения</label>
-        <input type="number" step="0.01" name="threshold" value="25">
-
-        <label> Минимальная площадь движения </label>
-        <input type="number" name="min_motion_area" value="2500">
-
+        <input type="number" step="0.1" name="threshold" value="30">
+        
+        <label>Минимальная площадь движения</label>
+        <input type="number" name="min_motion_area" value="40">
+        
         <label>Мин. вес объекта</label>
         <input type="number" step="0.01" name="minWeight" value="0.7">
-
-        <button type="submit">Добавить камеру</button>
+        
+        <button type="submit">💾 Добавить камеру</button>
     </form>
 </div>
 
+<script>
+    let availableStreams = [];
+    let foundCameras = [];
+    
+    // Сканирование сети
+    async function scanNetwork() {
+        const subnet = document.getElementById('subnet').value;
+        const scanResult = document.getElementById('scanResult');
+        
+        scanResult.innerHTML = '<span class="loading"></span> Сканирование сети...';
+        
+        try {
+            const response = await fetch('/api/scan_network', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subnet: subnet })
+            });
+            
+            const cameras = await response.json();
+            
+            if (cameras.error) {
+                scanResult.innerHTML = `<span style="color:#ff6b6b;">❌ ${cameras.error}</span>`;
+                return;
+            }
+            
+            foundCameras = cameras;
+            
+            if (cameras.length === 0) {
+                scanResult.innerHTML = '<span style="color:#ffc107;">⚠️ Камер не обнаружено</span>';
+            } else {
+                scanResult.innerHTML = `<span style="color:#8bc34a;">✅ Обнаружено камер: ${cameras.length}</span>`;
+            }
+            
+        } catch (error) {
+            scanResult.innerHTML = `<span style="color:#ff6b6b;">❌ Ошибка: ${error.message}</span>`;
+        }
+    }
+    
+    // Поиск рабочих потоков
+    async function findWorkingStreams() {
+        const ip = document.getElementById('cameraIp').value;
+        const login = document.getElementById('rtspLogin').value || 'admin';
+        const password = document.getElementById('rtspPassword').value;
+        const statusDiv = document.getElementById('connectionStatus');
+        
+        if (!ip) {
+            showStatus('connectionStatus', '❌ Введите IP камеры', 'error');
+            return;
+        }
+        
+        showStatus('connectionStatus', '🔍 Поиск доступных потоков...', 'info');
+        
+        try {
+            const response = await fetch('/api/scan_streams', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip: ip, login: login, password: password })
+            });
+            
+            const streams = await response.json();
+            
+            if (streams.error) {
+                showStatus('connectionStatus', `❌ ${streams.error}`, 'error');
+                availableStreams = [];
+                return;
+            }
+            
+            availableStreams = streams.filter(s => s.status === 'open');
+            
+            if (availableStreams.length === 0) {
+                showStatus('connectionStatus', '❌ Нет доступных потоков с этими логином/паролем', 'error');
+            } else {
+                showStatus('connectionStatus', `✅ Найдено ${availableStreams.length} доступных потоков. Нажмите на поле ввода для выбора.`, 'success');
+            }
+            
+        } catch (error) {
+            showStatus('connectionStatus', `❌ Ошибка: ${error.message}`, 'error');
+            availableStreams = [];
+        }
+    }
+    
+    // Формирование RTSP ссылки
+    function buildRtspUrl(path) {
+        const ip = document.getElementById('cameraIp').value;
+        const login = document.getElementById('rtspLogin').value;
+        const password = document.getElementById('rtspPassword').value;
+        
+        if (ip && path) {
+            let url = `rtsp://${ip}:554/${path}`;
+            if (login && password) {
+                url = `rtsp://${login}:${password}@${ip}:554/${path}`;
+            }
+            return url;
+        }
+        return '';
+    }
+    
+    // Показать выпадающий список для IP камер
+    function showCameraDropdown() {
+        const dropdown = document.getElementById('cameraDropdown');
+        
+        if (foundCameras.length === 0) {
+            dropdown.innerHTML = '<div class="dropdown-item" style="color:#888;">Нет найденных камер. Нажмите "Сканировать".</div>';
+            dropdown.classList.add('show');
+            return;
+        }
+        
+        dropdown.innerHTML = '';
+        foundCameras.forEach(cam => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            item.innerHTML = `${cam.ip} ${cam.has_auth ? '🔒' : '🔓'}`;
+            item.onclick = () => {
+                document.getElementById('cameraIp').value = cam.ip;
+                dropdown.classList.remove('show');
+            };
+            dropdown.appendChild(item);
+        });
+        
+        dropdown.classList.add('show');
+    }
+    
+    // Показать выпадающий список для RTSP потоков
+    function showStreamDropdown(inputId, dropdownId) {
+        const dropdown = document.getElementById(dropdownId);
+        
+        if (availableStreams.length === 0) {
+            dropdown.innerHTML = '<div class="dropdown-item" style="color:#888;">Нет доступных потоков. Нажмите "Найти доступные потоки".</div>';
+            dropdown.classList.add('show');
+            return;
+        }
+        
+        dropdown.innerHTML = '';
+        availableStreams.forEach(stream => {
+            const item = document.createElement('div');
+            item.className = 'dropdown-item';
+            
+            const fullUrl = buildRtspUrl(stream.path);
+            item.innerHTML = `<strong>${stream.path}</strong><br><small style="color:#aaa;">${fullUrl}</small>`;
+            
+            item.onclick = () => {
+                document.getElementById(inputId).value = fullUrl;
+                dropdown.classList.remove('show');
+                
+                const nameInput = document.getElementById('cameraName');
+                if (!nameInput.value) {
+                    nameInput.value = stream.path.split('/')[0] || 'Камера';
+                }
+            };
+            dropdown.appendChild(item);
+        });
+        
+        dropdown.classList.add('show');
+    }
+    
+    // Скрыть выпадающий список
+    function hideDropdown(dropdownId) {
+        setTimeout(() => {
+            const dropdown = document.getElementById(dropdownId);
+            dropdown.classList.remove('show');
+        }, 200);
+    }
+    
+    // Валидация формы перед отправкой
+    function validateForm() {
+        const ip = document.getElementById('cameraIp').value;
+        const streamView = document.getElementById('streamView').value;
+        const streamRecord = document.getElementById('streamRecord').value;
+        
+        if (!ip) {
+            showStatus('connectionStatus', '❌ Введите IP адрес камеры', 'error');
+            return false;
+        }
+        
+        if (!streamView) {
+            showStatus('connectionStatus', '❌ Введите или выберите RTSP поток для просмотра', 'error');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    function showStatus(elementId, message, type) {
+        const el = document.getElementById(elementId);
+        el.style.display = 'block';
+        el.className = `status ${type}`;
+        el.innerHTML = message;
+        setTimeout(() => {
+            if (type !== 'error') {
+                setTimeout(() => { el.style.display = 'none'; }, 3000);
+            }
+        }, 3000);
+    }
+    
+    // Настройка выпадающих списков
+    const ipInput = document.getElementById('cameraIp');
+    
+    ipInput.addEventListener('focus', showCameraDropdown);
+    ipInput.addEventListener('blur', () => hideDropdown('cameraDropdown'));
+    
+    const viewInput = document.getElementById('streamView');
+    const viewDropdown = document.getElementById('viewDropdown');
+    const recordInput = document.getElementById('streamRecord');
+    const recordDropdown = document.getElementById('recordDropdown');
+    
+    viewInput.addEventListener('focus', () => showStreamDropdown('streamView', 'viewDropdown'));
+    viewInput.addEventListener('blur', () => hideDropdown('viewDropdown'));
+    
+    recordInput.addEventListener('focus', () => showStreamDropdown('streamRecord', 'recordDropdown'));
+    recordInput.addEventListener('blur', () => hideDropdown('recordDropdown'));
+    
+    // Блокировка отправки формы при нажатии Enter в полях ввода
+    document.querySelectorAll('input, textarea').forEach(input => {
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                return false;
+            }
+        });
+    });
+</script>
 </body>
 </html>

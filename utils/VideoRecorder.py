@@ -92,11 +92,12 @@ def record_camera(cam, settings):
             height = int(cap.get(4))
 
             today = datetime.now().strftime("%Y-%m-%d")
-            save_dir = os.path.join("recordings", "records", today, cam["name"])
-            os.makedirs(save_dir, exist_ok=True)
+            save_dir = os.path.join("recordings", "records")
+            save_dir_name = os.path.join(save_dir, today, cam["name"])
+            os.makedirs(save_dir_name, exist_ok=True)
             
             filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".mp4"
-            filepath = os.path.join(save_dir, filename)
+            filepath = os.path.join(save_dir_name, filename)
 
             out = SafeVideoWriter(filepath, fps, (width, height))
             register_writer(out)

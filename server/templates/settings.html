@@ -61,6 +61,14 @@
             <small>(пример: yolo8person.pt)</small>
         </label>
         <input name="modelName" value="{{ settings.modelName }}">
+        <label>
+            Количество сохроняемых событий на диске
+        </label>
+        <input type="number" name="countEventVideo" value="{{ settings.countEventVideo }}">
+        <label>
+            Количество сохроняемых записанных дней на диске
+        </label>
+        <input type="number" name="countRecordVideo" value="{{ settings.countRecordVideo }}">
 
         <button type="submit">Сохранить</button>
     </form>

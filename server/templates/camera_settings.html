@@ -142,7 +142,7 @@
             });
 
             ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 5;
             
             for (let i = 0; i <= cols; i++) {
                 ctx.beginPath();
@@ -229,13 +229,13 @@
         <label>Список объектов поиска <small>(пример: person car)</small></label>
         <textarea name="searchObjectList" placeholder='person, car'>{% for object in camera.searchObjectList %}{{object}} {% endfor %}</textarea>
 
-        <label>Порог обнаружения (threshold) <small>(пример: 25)</small></label>
+        <label>Порог обнаружения <small>(пример: 25)</small></label>
         <input type="number" step="0.001" name="threshold" placeholder="0.25" value="{{ camera.threshold }}">
 
-        <label> Минимальная площадь движения <small>(пример: 2500)</small></label>
+        <label> Минимальная рамзер обьекта <small>(пример: 25)</small></label>
         <input type="number" name="min_motion_area" placeholder="0.5" value="{{ camera.min_motion_area }}">
 
-        <label>Мин. вес объекта (minWeight) <small>(пример: 0.5)</small></label>
+        <label>Мин. вес объекта (minWeight) <small>(пример: 0.7)</small></label>
         <input type="number" step="0.01" name="minWeight" placeholder="0.5" value="{{ camera.minWeight }}">
 
         <button type="submit">Сохранить</button>

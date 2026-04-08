@@ -3,9 +3,14 @@ import math
 import cv2
 import queue
 
+import socket
+import ipaddress
+import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+
 app = Flask(__name__)
 CONFIG = None
-
 
 # =============================================================================
 # ---------------------- RENDER INDEX ------------------------------------
@@ -16,42 +21,232 @@ def index():
     size = 2 if count <= 2 else int(math.ceil(math.sqrt(count)))
     return render_template('index.html', cameras=cameras, rows=size, cols=size)
 
+# =============================================================================
+# --------------------- RTSP SCANNER FUNCTIONS -------------------------------
+# =============================================================================
+RTSP_PATHS = [
+    "h264/ch1/main/av_stream",
+    "stream1",
+    "stream2", 
+    "Streaming/Channels/101",
+    "Streaming/Channels/102",
+    "live/ch0",
+    "live/ch1",
+    "onvif1",
+    "cam/realmonitor?channel=1&subtype=0",
+    "axis-media/media.amp",
+    "videoMain",
+    "videoSub"
+]
+
+def check_rtsp_device(ip, port=554):
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(1)
+        sock.connect((ip, port))
+        sock.send(b"OPTIONS rtsp:// RTSP/1.0\r\nCSeq: 1\r\n\r\n")
+        resp = sock.recv(1024).decode(errors='ignore')
+        sock.close()
+        if "200 OK" in resp or "401 Unauthorized" in resp:
+            return True
+    except:
+        pass
+    return False
+
+def find_rtsp_streams(ip, login="", password="", port=554):
+    """Находит все доступные RTSP потоки на камере"""
+    working_streams = []
+    
+    for path in RTSP_PATHS:
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(2)
+            sock.connect((ip, port))
+            
+            if login and password:
+                auth = base64.b64encode(f"{login}:{password}".encode()).decode()
+                url = f"rtsp://{ip}:{port}/{path}"
+                request = f"DESCRIBE {url} RTSP/1.0\r\nCSeq: 1\r\nAuthorization: Basic {auth}\r\n\r\n"
+            else:
+                url = f"rtsp://{ip}:{port}/{path}"
+                request = f"DESCRIBE {url} RTSP/1.0\r\nCSeq: 1\r\n\r\n"
+            
+            sock.send(request.encode())
+            resp = sock.recv(2048).decode(errors='ignore')
+            sock.close()
+            
+            if "200 OK" in resp:
+                working_streams.append({
+                    'path': path,
+                    'status': 'open',
+                    'url': f"rtsp://{login}:{password}@{ip}:{port}/{path}" if login and password else f"rtsp://{ip}:{port}/{path}"
+                })
+            elif "401 Unauthorized" in resp:
+                working_streams.append({
+                    'path': path,
+                    'status': 'auth',
+                    'url': None
+                })
+        except:
+            pass
+    
+    return working_streams
+
+# =============================================================================
+# --------------------- API SCAN NETWORK --------------------------------------
+@app.route('/api/scan_network', methods=['POST'])
+def api_scan_network():
+    data = request.get_json()
+    subnet = data.get('subnet', '192.168.0.0/24')
+    
+    try:
+        network = ipaddress.ip_network(subnet, strict=False)
+        cameras = []
+        
+        def check_ip(ip):
+            ip_str = str(ip)
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(0.5)
+                sock.connect((ip_str, 554))
+                sock.send(b"OPTIONS rtsp:// RTSP/1.0\r\nCSeq: 1\r\n\r\n")
+                resp = sock.recv(1024).decode(errors='ignore')
+                sock.close()
+                
+                if "200 OK" in resp:
+                    return {'ip': ip_str, 'has_auth': False, 'status': 'open'}
+                elif "401 Unauthorized" in resp:
+                    return {'ip': ip_str, 'has_auth': True, 'status': 'protected'}
+            except:
+                pass
+            return None
+        
+        with ThreadPoolExecutor(max_workers=200) as executor:
+            futures = {executor.submit(check_ip, ip): ip for ip in network.hosts()}
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    cameras.append(result)
+        
+        return jsonify(cameras)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# --------------------- API SCAN STREAMS --------------------------------------
+@app.route('/api/scan_streams', methods=['POST'])
+def api_scan_streams():
+    data = request.get_json()
+    ip = data.get('ip')
+    login = data.get('login', 'admin')
+    password = data.get('password', '')
+    
+    if not ip:
+        return jsonify({'error': 'IP адрес не указан'}), 400
+    
+    try:
+        streams = find_rtsp_streams(ip, login, password)
+        return jsonify(streams)
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# --------------------- API TEST CONNECTION -----------------------------------
+@app.route('/api/test_connection', methods=['POST'])
+def api_test_connection():
+    data = request.get_json()
+    ip = data.get('ip')
+    login = data.get('login', 'admin')
+    password = data.get('password', '')
+    
+    if not ip:
+        return jsonify({'success': False, 'error': 'IP адрес не указан'}), 400
+    
+    try:
+        streams = find_rtsp_streams(ip, login, password)
+        open_streams = [s for s in streams if s['status'] == 'open']
+        
+        if open_streams:
+            return jsonify({
+                'success': True,
+                'streams_count': len(open_streams),
+                'streams': [s['path'] for s in open_streams],
+                'first_url': open_streams[0]['url'] if open_streams else None
+            })
+        elif streams:
+            return jsonify({
+                'success': False,
+                'error': 'Найдены потоки, но требуется авторизация. Проверьте логин/пароль.',
+                'streams_count': len(streams)
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Не найдено ни одного RTSP потока. Проверьте IP и порт.'
+            })
+    
+    except socket.timeout:
+        return jsonify({'success': False, 'error': 'Таймаут подключения. Камера не отвечает.'})
+    except ConnectionRefusedError:
+        return jsonify({'success': False, 'error': 'Подключение отклонено. Порт 554 закрыт.'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 
 # =============================================================================
 # --------------------- STREAM VIEW --------------------------------------
 @app.route('/video/<int:cam_id>')
 def video(cam_id):
-
     def generate():
+        import time
+        last_send = 0
+        SEND_INTERVAL = 0.1  # 10 FPS
+        
         while True:
             cameras = CONFIG.get_cameras()
-
+            
             if cam_id >= len(cameras):
                 break
-
-            cam = cameras[cam_id]
-
-            try:
-                frame = cam["frameQueue"].get(timeout=1)
-            except queue.Empty:
+            
+            now = time.time()
+            if now - last_send < SEND_INTERVAL:
+                time.sleep(0.001)
                 continue
-
-            ret, buffer = cv2.imencode('.jpg', frame)
+            
+            cam = cameras[cam_id]
+            frame = None
+            
+            try:
+                while True:
+                    frame = cam["frameQueue"].get_nowait()
+            except queue.Empty:
+                pass
+            
+            if frame is None:
+                try:
+                    frame = cam["frameQueue"].get(timeout=0.01)
+                except queue.Empty:
+                    continue
+            
+            ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 60])
             if not ret:
                 continue
-
+            
+            last_send = now
+            
             yield (
                 b'--frame\r\n'
                 b'Content-Type: image/jpeg\r\n\r\n' +
                 buffer.tobytes() +
                 b'\r\n'
             )
-
-    return Response(
-        generate(),
-        mimetype='multipart/x-mixed-replace; boundary=frame'
-    )
-
+    
+    return Response(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 # =============================================================================
 # --------------------- CAMERA SETTINGS ----------------------------------
 @app.route("/settings")
@@ -241,6 +436,12 @@ def saveSettings():
 
     if "modelName" in request.form:
         settings["modelName"] = request.form.get("modelName")
+
+    if "countEventVideo" in request.form:
+        settings["countEventVideo"] = int(request.form.get("countEventVideo"))
+
+    if "countRecordVideo" in request.form:
+        settings["countRecordVideo"] = int(request.form.get("countRecordVideo"))
 
     CONFIG.save()
     return redirect("/")

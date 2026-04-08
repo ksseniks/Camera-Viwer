@@ -2,6 +2,7 @@ import os
 import cv2
 import time
 import shutil
+import asyncio
 import threading
 from datetime import datetime
 
@@ -49,19 +50,12 @@ def FolderCleaner(folderPath, counter):
 def start_background_tasks(config):
     from utils.EventRecorder import EventRecorder
     from utils.VideoRecorder import StartRecordingCameras
-    from bots.CameraAlertBot import main as RunCameraAlert
 
     threading.Thread(
         target=StartRecordingCameras,
         args=(config,),
         daemon=True
     ).start()
-
-    # threading.Thread(
-    #     target=RunCameraAlert,
-    #     args=(config,),
-    #     daemon=True
-    # ).start()
 
     threading.Thread(
         target=EventRecorder,
