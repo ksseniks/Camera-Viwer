@@ -18,7 +18,6 @@
       {% endfor %}
       <button class="hotbar-button" title="Добавить камеру" onclick="window.location='/camera/add'">➕</button>
   </div>
-
   <div id="container" class="grid-container" style="--rows: {{ rows }}; --cols: {{ cols }};" data-rows="{{ rows }}" data-cols="{{ cols }}">
     {% for i in range(rows * cols) %}
       {% if i < cameras|length %}
